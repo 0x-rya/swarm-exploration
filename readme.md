@@ -10,10 +10,10 @@ Having Lua and Luanti is a pre-requisite. Once both of them are downloaded, foll
 2. Create a symlink of sim folder to the <mods_dir> named as <lidar_sim>. On Unix systems it can be done via `ln -s <path_to_sim>/sim <mods_dir>/lidar_sim`. Please make sure to provide the absolute path to the sim directory.
 3. As our mod uses external lua libraries, we need to either add our mod to the trusted mods list or disable mod security. This can be done via editing the minetest.cof file, which which is in the same dir as <mods_dir>. Add `secure.trusted_mods = lidar_sim` and only if that doesn't seem to work, disable mods security via `secure.enable_security = false`. NOTE: Disabling mod security runs the risk of running untrusted mods ANYTHING they would like to run. Make sure all the installed mods are trusted.
 4. Our mod utliises the`LuaSocket` library to establish connection with the comms network. We can install it either using LuaRocks or install it directly. This tutorial assumes you choose to install it via LuaRocks.
-    4.1. Install [LuaRocks](https://github.com/luarocks/luarocks/wiki/Download#installing)
-    4.2. Install LuaSocket for the version of Lua that your Luanti runs on, via `luarocks install luasocket --lua-version=<your_lua_version>`.
-        4.2.1. To check whether your Luanti runs on Lua or LuaJIT, run: `Luanti --version | grep Using`
-        4.2.2. Depending on what it uses, run lua or luajit on your terminal and execute the following `print(_VERSION)` to know the version of your lua.
-    4.3. Add <LUA_PATH> and <LUA_CPATH> to your environment variables and you're set to go.
-        4.3.1. To find your <LUA_PATH> and <LUA_CPATH>, run `luarocks show luasocket --lua-version=<your_lua_version>`
-        4.3.2. `LUA_PATH=<SOME/PATH>/lib/lua/<VERSION>/` and `LUA_CPATH=<SOME/PATH>/share/lua/<VERSION>/`
+    1. Install [LuaRocks](https://github.com/luarocks/luarocks/wiki/Download#installing)
+    2. Install LuaSocket for the version of Lua that your Luanti runs on, via `luarocks install luasocket --lua-version=<your_lua_version>`.
+        1. To check whether your Luanti runs on Lua or LuaJIT, run: `Luanti --version | grep Using`
+        2. Depending on what it uses, run lua or luajit on your terminal and execute the following `print(_VERSION)` to know the version of your lua.
+    3. Add <LUA_PATH> and <LUA_CPATH> to your environment variables and you're set to go.
+        1. To find your <LUA_PATH> and <LUA_CPATH>, run `luarocks show luasocket --lua-version=<your_lua_version>`
+        2. `LUA_PATH=<SOME/PATH>/lib/lua/<VERSION>/` and `LUA_CPATH=<SOME/PATH>/share/lua/<VERSION>/`
