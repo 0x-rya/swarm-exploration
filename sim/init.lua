@@ -1,4 +1,4 @@
-print("BLAH BLAH BLAH BLAH BLAH")
+Sock = require("socket")
 
 local cast_ray = function(start_pos, dir, range) -- end_pos = start_pos + dir (x, y, z) * range    entity should calculate this and send it here
 
@@ -8,7 +8,7 @@ local cast_ray = function(start_pos, dir, range) -- end_pos = start_pos + dir (x
 
 end
 
-minetest.register_entity("test_raycast:castor", {
+minetest.register_entity("lidar_sim:castor", {
     initial_properties = {
         physical = true,
         collide_with_objects = true,
@@ -31,12 +31,12 @@ minetest.register_entity("test_raycast:castor", {
         print("get_look_horizontal: ", entDir)
 
         local x, z = -1 * math.sin(entDir), math.cos(entDir)
-        local dir = vector.new(x, entPos.y, z)
+        local dir = vector.new(x, 0, z)
         local range = 4
 
-        print(dump(cast_ray(entPos, dir, range)))
-        print(math.sin(0))
-        print(dump(self.object))
+        local coll = cast_ray(entPos, dir, range)
+        local dist = vector.subtract(entPos, coll.intersection_point)
+        print(dist)
 
         --[[ (x, y, z)
         x - sin
