@@ -16,4 +16,4 @@ Having Lua and Luanti is a pre-requisite. Once both of them are downloaded, foll
         2. Depending on what it uses, run lua or luajit on your terminal and execute the following `print(_VERSION)` to know the version of your lua.
     3. Add <LUA_PATH> and <LUA_CPATH> to your environment variables and you're set to go.
         1. To find your <LUA_PATH> and <LUA_CPATH>, run `luarocks show luasocket --lua-version=<your_lua_version>`
-        2. `LUA_PATH=<SOME/PATH>/lib/lua/<VERSION>/` and `LUA_CPATH=<SOME/PATH>/share/lua/<VERSION>/`
+        2. `LUA_PATH=<SOME/PATH>/lib/lua/<VERSION>/?.lua` and `LUA_CPATH=<SOME/PATH>/share/lua/<VERSION>/?.so`
