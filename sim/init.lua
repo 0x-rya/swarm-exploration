@@ -30,6 +30,8 @@ minetest.register_entity("lidar_sim:castor", {
         print("get_pos: ", entPos)
         print("get_look_horizontal: ", entDir)
 
+		-- spawn server and establish connection with that server
+
         local x, z = -1 * math.sin(entDir), math.cos(entDir)
         local dir = vector.new(x, 0, z)
         local range = 4
