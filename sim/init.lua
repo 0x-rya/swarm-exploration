@@ -35,8 +35,10 @@ minetest.register_entity("lidar_sim:castor", {
         local range = 4
 
         local coll = cast_ray(entPos, dir, range)
-        local dist = vector.subtract(entPos, coll.intersection_point)
-        print(dist)
+		if coll ~= nil then
+        	local dist = vector.subtract(entPos, coll.intersection_point)
+        	print(dist)
+		end
 
         --[[ (x, y, z)
         x - sin
