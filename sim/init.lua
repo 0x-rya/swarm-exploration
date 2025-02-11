@@ -20,7 +20,8 @@ minetest.register_entity("lidar_sim:castor", {
         -- automatic_rotate = 0,
         automatic_rotate = 0,
         shaded = true,
-        show_on_minimap = true
+        show_on_minimap = true,
+        _steps = 0
     },
     on_activate = function(self, staticdata, dtime_s)
 
@@ -50,5 +51,27 @@ minetest.register_entity("lidar_sim:castor", {
             90  -> (-1, 0, 0)
             270 -> (1, 0, 0)
         ]]
+    end,
+
+    on_step = function (self, dtime, moveresult)
+        -- ent
+        local ent = self.object
+        local entPos = ent:get_pos()
+        local entDir = ent:get_yaw()
+        
+        local x, z = -1 * math.sin(entDir), math.cos(entDir)
+        local dir = vector.new(x, 0, z)
+        local range = 2
+        local coll = cast_ray(entPos, dir, range)
+		if coll ~= nil then
+        	local dist = vector.subtract(entPos, coll.intersection_point)
+        	print(dist)
+            self.object:set_yaw(entDir + 1.71)
+        else
+            self.object:move_to(vector.add(vector.new(-1 * math.sin(entDir), 0, math.cos(entDir)), entPos))
+            
+		end
+		
+        print("dtime", dtime)
     end
 })
