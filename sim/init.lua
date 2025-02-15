@@ -2,6 +2,15 @@ Sock = require("socket")
 
 local cast_ray = function(start_pos, dir, range) -- end_pos = start_pos + dir (x, y, z) * range    entity should calculate this and send it here
 
+	--[[ (x, y, z)
+		x - sin
+		z - cos
+			360 -> (0, 0, 1)
+			180 -> (0, 0, -1)
+			90  -> (-1, 0, 0)
+			270 -> (1, 0, 0)
+	]]
+
     local end_pos = vector.add(start_pos, vector.multiply(dir, range))
     local ray = minetest.raycast(vector.add(start_pos, dir), end_pos, true, false)
     return ray:next()
@@ -42,15 +51,6 @@ minetest.register_entity("lidar_sim:castor", {
         	local dist = vector.subtract(entPos, coll.intersection_point)
         	print(dist)
 		end
-
-        --[[ (x, y, z)
-        x - sin
-        z - cos
-            360 -> (0, 0, 1)
-            180 -> (0, 0, -1)
-            90  -> (-1, 0, 0)
-            270 -> (1, 0, 0)
-        ]]
     end,
 
     on_step = function (self, dtime, moveresult)
@@ -62,13 +62,14 @@ minetest.register_entity("lidar_sim:castor", {
         local x, z = -1 * math.sin(entDir), math.cos(entDir)
         local dir = vector.new(x, 0, z)
         local range = 2
+		local speed = 2
         local coll = cast_ray(entPos, dir, range)
 		if coll ~= nil then
         	local dist = vector.subtract(entPos, coll.intersection_point)
         	print(dist)
             self.object:set_yaw(entDir + 1.71)
         else
-            self.object:move_to(vector.add(vector.new(-1 * math.sin(entDir), 0, math.cos(entDir)), entPos))
+            self.object:move_to(vector.add(speed * dir * dtime, entPos))
             
 		end
 		
