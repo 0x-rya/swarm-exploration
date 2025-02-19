@@ -1,6 +1,6 @@
 Sock = require("socket")
 
-local cast_ray = function(start_pos, dir, range) -- end_pos = start_pos + dir (x, y, z) * range    entity should calculate this and send it here
+local cast_ray = function(ent, range) -- end_pos = start_pos + dir (x, y, z) * range    entity should calculate this and send it here
 
 	--[[ (x, y, z)
 		x - sin
@@ -11,9 +11,15 @@ local cast_ray = function(start_pos, dir, range) -- end_pos = start_pos + dir (x
 			270 -> (1, 0, 0)
 	]]
 
-    local end_pos = vector.add(start_pos, vector.multiply(dir, range))
-    local ray = minetest.raycast(vector.add(start_pos, dir), end_pos, true, false)
-    return ray:next()
+	local entPos = ent:get_pos()
+	local entDir = ent:get_yaw()
+
+	local x, z = -1 * math.sin(entDir), math.cos(entDir)
+	local dir = vector.new(x, 0, z)
+
+    local end_pos = vector.add(entPos, vector.multiply(dir, range))
+    local ray = minetest.raycast(vector.add(entPos, dir), end_pos, true, false)
+    return ray:next(), dir
 
 end
 
@@ -34,45 +40,27 @@ minetest.register_entity("lidar_sim:castor", {
     },
     on_activate = function(self, staticdata, dtime_s)
 
-        local ent = self.object
-        local entPos = ent:get_pos()
-        local entDir = ent:get_yaw()
-        print("get_pos: ", entPos)
-        print("get_look_horizontal: ", entDir)
-
 		-- spawn server and establish connection with that server
 
-        local x, z = -1 * math.sin(entDir), math.cos(entDir)
-        local dir = vector.new(x, 0, z)
-        local range = 4
-
-        local coll = cast_ray(entPos, dir, range)
-		if coll ~= nil then
-        	local dist = vector.subtract(entPos, coll.intersection_point)
-        	print(dist)
-		end
     end,
 
     on_step = function (self, dtime, moveresult)
         -- ent
-        local ent = self.object
-        local entPos = ent:get_pos()
-        local entDir = ent:get_yaw()
-        
-        local x, z = -1 * math.sin(entDir), math.cos(entDir)
-        local dir = vector.new(x, 0, z)
         local range = 2
 		local speed = 2
-        local coll = cast_ray(entPos, dir, range)
+        local ent = self.object
+		local entPos = ent:get_pos()
+		local entDir = ent:get_yaw()
+        local coll, dir = cast_ray(ent, range)
 		if coll ~= nil then
         	local dist = vector.subtract(entPos, coll.intersection_point)
         	print(dist)
             self.object:set_yaw(entDir + 1.71)
         else
             self.object:move_to(vector.add(speed * dir * dtime, entPos))
-            
+
 		end
-		
+
         print("dtime", dtime)
     end
 })
