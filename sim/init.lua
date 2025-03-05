@@ -42,7 +42,7 @@ minetest.register_entity("lidar_sim:castor", {
     on_activate = function(self, staticdata, dtime_s)
 
 		-- connect to the communication network server
-		self._client = Sock.connect("10.1.32.230", 8000)
+		self._client = Sock.connect("10.1.107.112", 8000)
 		local err = self._client:send("Connection Established")
 		if err ~= nil then
 			print("Connection Established")
@@ -65,7 +65,18 @@ minetest.register_entity("lidar_sim:castor", {
 
 			-- data sending protocol
 
-			self._client.send()
+			self._client:send(
+				string.format(
+					"%d,%d,%d/%.1f,%.1f,%.1f",	-- d, d, d ent pos and f, f, f dist
+					entPos.x,
+					entPos.y,
+					entPos.z,
+					dist.x,
+					dist.y,
+					dist.z
+				)
+			)
+
         	print(dist)
 
             self.object:set_yaw(entDir + 1.71)
