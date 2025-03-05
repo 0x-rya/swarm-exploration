@@ -36,16 +36,24 @@ minetest.register_entity("lidar_sim:castor", {
         automatic_rotate = 0,
         shaded = true,
         show_on_minimap = true,
-        _steps = 0
+        _steps = 0,
+		_client = nil
     },
     on_activate = function(self, staticdata, dtime_s)
 
-		-- spawn server and establish connection with that server
+		-- connect to the communication network server
+		self._client = Sock.connect("10.1.32.230", 8000)
+		local err = self._client:send("Connection Established")
+		if err ~= nil then
+			print("Connection Established")
+		else
+			print("Connection Failed")
+		end
+		print(self._client.object)
 
     end,
 
     on_step = function (self, dtime, moveresult)
-        -- ent
         local range = 2
 		local speed = 2
         local ent = self.object
@@ -54,13 +62,16 @@ minetest.register_entity("lidar_sim:castor", {
         local coll, dir = cast_ray(ent, range)
 		if coll ~= nil then
         	local dist = vector.subtract(entPos, coll.intersection_point)
+
+			-- data sending protocol
+
+			self._client.send()
         	print(dist)
+
             self.object:set_yaw(entDir + 1.71)
         else
             self.object:move_to(vector.add(speed * dir * dtime, entPos))
 
 		end
-
-        print("dtime", dtime)
     end
 })
