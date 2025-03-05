@@ -1,11 +1,13 @@
+import json
 import socket
 from threading import Thread
 import os
 from dotenv import load_dotenv
 import logging
+import valkey
 
 # VARS
-SERVER_IP = "10.1.32.230"
+SERVER_IP = "10.1.107.112"
 PORT = 8000
 
 # LOGGING
@@ -20,15 +22,24 @@ if load_dotenv():
 # CONNECTION HANDLER      
 def new_conn(socket: socket.socket, address, idx: int):
     logging.info(f"connected on thread {idx}, {socket}, {tuple(address)}")
-    
+    ts = 0
     while True:
         data = socket.recv(1024)
+        if len(data) == 0:
+            continue
+        
+        data = json.dumps([val.split(',') for val in data.decode('utf-8').split("/")]).encode()
         print(data)
+        vk.set(ts, data)
         logging.critical(data)
+        ts += 1
     socket.close()
 
 # SERVER
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+# VALKEY
+vk = valkey.Valkey(host='127.0.0.1', port=6379)
 
 try:    
     server.bind((SERVER_IP, PORT))
