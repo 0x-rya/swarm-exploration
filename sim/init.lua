@@ -23,6 +23,8 @@ local cast_ray = function(ent, range) -- end_pos = start_pos + dir (x, y, z) * r
 
 end
 
+print("Mod Loaded")
+
 minetest.register_entity("lidar_sim:castor", {
     initial_properties = {
         physical = true,
@@ -42,7 +44,7 @@ minetest.register_entity("lidar_sim:castor", {
     on_activate = function(self, staticdata, dtime_s)
 
 		-- connect to the communication network server
-		self._client = Sock.connect("10.1.107.112", 8000)
+		self._client = Sock.connect("127.0.0.1", 8000)
 		local err = self._client:send("Connection Established")
 		if err ~= nil then
 			print("Connection Established")
@@ -67,13 +69,15 @@ minetest.register_entity("lidar_sim:castor", {
 
 			self._client:send(
 				string.format(
-					"%d,%d,%d/%.1f,%.1f,%.1f",	-- d, d, d ent pos and f, f, f dist
+					"%d,%d,%d,%d/%.1f,%.1f,%.1f/%d",	-- d, d, d ent pos and f, f, f dist and d obj
 					entPos.x,
 					entPos.y,
 					entPos.z,
+					entDir,
 					dist.x,
 					dist.y,
-					dist.z
+					dist.z,
+					1
 				)
 			)
 
@@ -82,7 +86,20 @@ minetest.register_entity("lidar_sim:castor", {
             self.object:set_yaw(entDir + 1.71)
         else
             self.object:move_to(vector.add(speed * dir * dtime, entPos))
-
+			
+			self._client:send(
+				string.format(
+					"%d,%d,%d,%d/%.1f,%.1f,%.1f/%d",	-- d, d, d ent pos and f, f, f dist and d no obj
+					entPos.x,
+					entPos.y,
+					entPos.z,
+					entDir,
+					dist.x,
+					dist.y,
+					dist.z,
+					0
+				)
+			)
 		end
     end
 })
