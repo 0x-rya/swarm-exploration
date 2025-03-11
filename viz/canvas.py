@@ -67,7 +67,7 @@ class Canvas:
             
             for robot_id in active_robots:
                 # Get the latest data for this robot
-                latest_data = self.vk.lrange(f"robot:{robot_id.decode("utf-8")}:history", -1, -1)
+                latest_data = self.vk.lrange(f"robot:{robot_id.decode('utf-8')}:history", -1, -1)
                 if latest_data:
                     try:
                         data_str = latest_data[0].decode('utf-8')
@@ -80,16 +80,27 @@ class Canvas:
     
     def process_robot_data(self, data_str):
         """Process robot data from string format"""
+        # Split by / to separate the parts
         data = data_str.split('/')
-        metadata = data[0].split(',')  # Split first 3 commas
+        
+        # Extract metadata (timestamp, robot_id, position, orientation)
+        metadata = data[0].split(',')
         if len(metadata) < 6:
             return
         
-        timestamp, robot_id, pos_x, pos_y, pos_z, orientation = metadata
-        
-        # Further split the remaining data
-        position, value = data[1:]
+        timestamp, robot_id = metadata[0], metadata[1]
+        pos_x, pos_y, pos_z, orientation = metadata[2], metadata[3], metadata[4], metadata[5]
 
+        # Get ray endpoint and collision flag
+        ray_data = data[1].split(',')
+        if len(ray_data) < 3:
+            return
+        
+        end_x, end_y, end_z = float(ray_data[0]), float(ray_data[1]), float(ray_data[2])
+        
+        # Get collision flag
+        collision_flag = int(data[2])
+        
         # Create or update robot
         robot_id = int(robot_id)
         if robot_id not in self.robots:
@@ -110,12 +121,26 @@ class Canvas:
                 float(orientation)
             )
         
-                
-        # Store scan data for visualization
-        self.robot_scan_data[robot_id] = scan_data
+        # Get robot position and orientation
+        robot_x, robot_y = float(pos_x), float(pos_z)
+        robot_theta = float(orientation)
         
-        # Update occupancy grid based on scan data
-        self.update_occupancy_grid(robot_id, scan_data)
+        # Calculate ray direction and distance
+        robot_pos = (robot_x, robot_y)
+        end_pos = (float(pos_x) + end_x, float(pos_z) + end_z)  # Use z as y in 2D visualization
+        
+        # Calculate distance between robot position and end position
+        distance = math.sqrt((end_pos[0] - robot_pos[0])**2 + (end_pos[1] - robot_pos[1])**2)
+        
+        # Calculate angle of the ray (we now only have one ray in the direction the robot is facing)
+        angle = 0  # The ray is in the direction the robot is facing
+        
+        # Store scan data for visualization (single ray)
+        self.robot_scan_data[robot_id] = [(angle, distance)]
+        
+        # Update occupancy grid if collision was detected
+        if collision_flag == 1:
+            self.update_occupancy_grid(robot_id, [(angle, distance)])
     
     def update_occupancy_grid(self, robot_id, scan_data):
         """Update the occupancy grid with new scan data"""

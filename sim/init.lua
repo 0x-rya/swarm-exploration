@@ -74,9 +74,9 @@ minetest.register_entity("lidar_sim:castor", {
 					entPos.y,
 					entPos.z,
 					entDir,
-					dist.x,
-					dist.y,
-					dist.z,
+					coll.intersection_point.x,
+					coll.intersection_point.y,
+					coll.intersection_point.z,
 					1
 				)
 			)
@@ -85,6 +85,7 @@ minetest.register_entity("lidar_sim:castor", {
 
             self.object:set_yaw(entDir + 1.71)
         else
+			local end_pos = vector.add(entPos, vector.multiply(dir, range))
             self.object:move_to(vector.add(speed * dir * dtime, entPos))
 			
 			self._client:send(
@@ -94,9 +95,9 @@ minetest.register_entity("lidar_sim:castor", {
 					entPos.y,
 					entPos.z,
 					entDir,
-					dist.x,
-					dist.y,
-					dist.z,
+					end_pos.x,
+					end_pos.y,
+					end_pos.z,
 					0
 				)
 			)
