@@ -110,7 +110,7 @@ class Canvas:
                 x=float(pos_x), 
                 y=float(pos_z),  # Use z as y in 2D visualization
                 theta=float(orientation),
-                size=10,
+                size=1,
                 color=color
             )
         else:
@@ -127,7 +127,7 @@ class Canvas:
         
         # Calculate ray direction and distance
         robot_pos = (robot_x, robot_y)
-        end_pos = (float(pos_x) + end_x, float(pos_z) + end_z)  # Use z as y in 2D visualization
+        end_pos = (end_x, end_z)  # Use z as y in 2D visualization
         
         # Calculate distance between robot position and end position
         distance = math.sqrt((end_pos[0] - robot_pos[0])**2 + (end_pos[1] - robot_pos[1])**2)
@@ -157,8 +157,8 @@ class Canvas:
                 
             # Calculate world coordinates of the obstacle
             scan_angle = robot_theta + angle
-            obstacle_x = robot_x + distance * math.cos(scan_angle)
-            obstacle_y = robot_y + distance * math.sin(scan_angle)
+            obstacle_x = robot_x + distance * -math.sin(scan_angle)
+            obstacle_y = robot_y + distance * math.cos(scan_angle)
             
             # Convert to grid coordinates
             grid_x = int(obstacle_x / self.grid_size)
@@ -284,6 +284,7 @@ class Canvas:
             if robot_id not in self.robots:
                 continue
                 
+            print(scan_data)
             robot = self.robots[robot_id]
             robot_x, robot_y = robot.x, robot.y
             robot_theta = robot.theta
@@ -292,8 +293,8 @@ class Canvas:
                 scan_angle = robot_theta + angle
                 
                 # Calculate world coordinates of the scan endpoint
-                end_x = robot_x + distance * math.cos(scan_angle)
-                end_y = robot_y + distance * math.sin(scan_angle)
+                end_x = robot_x + distance * -math.sin(scan_angle)
+                end_y = robot_y + distance * math.cos(scan_angle)
                 
                 # Draw line from robot to scan endpoint
                 start_screen = self.world_to_screen((robot_x, robot_y))
@@ -327,20 +328,24 @@ class Canvas:
         nav_text = font.render("Pan: WASD | Zoom: +/- or Mouse Wheel", True, self.BLACK)
         self.screen.blit(nav_text, (10, self.HEIGHT - 30))
         
-    def zoom_at_point(self, factor, mouse_pos):
-        """Zoom in/out centered on mouse position"""
-        # Convert mouse position to world coordinates before zoom
-        world_x, world_y = self.screen_to_world(mouse_pos)
+    def zoom_at_center(self, factor):
+        """Zoom in/out centered on the screen center"""
+        # Get the world coordinates of the screen center before zooming
+        center_x, center_y = self.get_center_coords()
         
         # Apply zoom
         old_zoom = self.zoom
         self.zoom *= factor
-        self.zoom = max(0.1, min(5.0, self.zoom))  # Limit zoom range
+        self.zoom = max(0.1, min(10.0, self.zoom))  # Limit zoom range
         
-        # Adjust canvas position to keep the point under mouse fixed
+        # Get new world coordinates of the screen center after zooming
+        new_center_x, new_center_y = self.get_center_coords()
+        
+        # Adjust canvas position to keep the center point fixed
         if old_zoom != self.zoom:
-            self.canvas_pos[0] = world_x - mouse_pos[0] / self.zoom
-            self.canvas_pos[1] = world_y - mouse_pos[1] / self.zoom
+            self.canvas_pos[0] += center_x - new_center_x
+            self.canvas_pos[1] += center_y - new_center_y
+
             
     def handle_continuous_movement(self):
         """Handle continuous movement when arrow keys are held down"""
@@ -366,9 +371,9 @@ class Canvas:
             # Mouse events
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 4:  # Mouse wheel up (zoom in)
-                    self.zoom_at_point(1.1, event.pos)
+                    self.zoom_at_center(1.1)
                 elif event.button == 5:  # Mouse wheel down (zoom out)
-                    self.zoom_at_point(0.9, event.pos)
+                    self.zoom_at_center(0.9)
             
             # Keyboard events
             elif event.type == pygame.KEYDOWN:
@@ -379,10 +384,10 @@ class Canvas:
                 # Zoom around mouse position
                 if event.key == pygame.K_EQUALS or event.key == pygame.K_PLUS:
                     mouse_pos = pygame.mouse.get_pos()
-                    self.zoom_at_point(1.1, mouse_pos)
+                    self.zoom_at_center(1.1)
                 elif event.key == pygame.K_MINUS:
                     mouse_pos = pygame.mouse.get_pos()
-                    self.zoom_at_point(0.9, mouse_pos)
+                    self.zoom_at_center(0.9)
                 # Clear map on 'c'
                 elif event.key == pygame.K_c:
                     self.occupancy_grid = {}

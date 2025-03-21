@@ -32,6 +32,7 @@ def new_conn(socket: socket.socket, address, idx: int):
         data_str = data.decode('utf-8')
         
         # Format: timestamp,robot_id,data
+        print(data_str)
         storage_data = f"{timestamp},{idx},{data_str}"
         
         # Store in Valkey with key format: "robot:{id}:{timestamp}"

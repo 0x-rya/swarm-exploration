@@ -104,8 +104,8 @@ class Robot:
         pygame.draw.circle(screen, self.color, center_screen, screen_size)
         
         # Draw a line indicating the robot's orientation
-        end_x = center_screen[0] + screen_size * math.cos(self.theta)
-        end_y = center_screen[1] + screen_size * math.sin(self.theta)
+        end_x = center_screen[0] + screen_size * -math.sin(self.theta)
+        end_y = center_screen[1] + screen_size * math.cos(self.theta)
         pygame.draw.line(screen, (0, 0, 0), center_screen, (end_x, end_y), 2)
         
         # Draw the trail if it exists
