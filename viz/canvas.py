@@ -48,7 +48,7 @@ class Canvas:
         
         # Robot data storage
         self.robots = {}  # {robot_id: Robot()}
-        self.robot_scan_data = {}  # {robot_id: [(angle, distance), ...]}
+        self.robot_scan_data = {}  # {robot_id: [(end_pos, distance), ...]}
         
         # Map data (occupancy grid)
         self.grid_size = 0.5  # Size of each grid cell in world units
@@ -90,16 +90,6 @@ class Canvas:
         
         timestamp, robot_id = metadata[0], metadata[1]
         pos_x, pos_y, pos_z, orientation = metadata[2], metadata[3], metadata[4], metadata[5]
-
-        # Get ray endpoint and collision flag
-        ray_data = data[1].split(',')
-        if len(ray_data) < 3:
-            return
-        
-        end_x, end_y, end_z = float(ray_data[0]), float(ray_data[1]), float(ray_data[2])
-        
-        # Get collision flag
-        collision_flag = int(data[2])
         
         # Create or update robot
         robot_id = int(robot_id)
@@ -127,20 +117,33 @@ class Canvas:
         
         # Calculate ray direction and distance
         robot_pos = (robot_x, robot_y)
-        end_pos = (end_x, end_z)  # Use z as y in 2D visualization
-        
-        # Calculate distance between robot position and end position
-        distance = math.sqrt((end_pos[0] - robot_pos[0])**2 + (end_pos[1] - robot_pos[1])**2)
-        
-        # Calculate angle of the ray (we now only have one ray in the direction the robot is facing)
-        angle = 0  # The ray is in the direction the robot is facing
-        
-        # Store scan data for visualization (single ray)
-        self.robot_scan_data[robot_id] = [(angle, distance)]
+
+        # Get ray endpoint and collision flag
+        collision_flag = False
+        update_data = []
+        for datapoint in data[1:]:
+            ray_data = datapoint.split(',')
+            if len(ray_data) < 4:
+                break
+            
+            end_x, end_y, end_z, collFlag = float(ray_data[0]), float(ray_data[1]), float(ray_data[2]), int(ray_data[3])
+            
+            # Calculate distance between robot position and end position
+            end_pos = (end_x, end_z)  # Use z as y in 2D visualization
+            distance = math.sqrt((end_pos[0] - robot_pos[0])**2 + (end_pos[1] - robot_pos[1])**2)
+            
+            print(end_x, end_z, collFlag)
+            if collFlag == 1:
+                print("here")
+                collision_flag = True
+                update_data.append((end_pos, distance))
+            
+            # Store scan data for visualization (single ray)
+            self.robot_scan_data[robot_id] = [(end_pos, distance)]
         
         # Update occupancy grid if collision was detected
-        if collision_flag == 1:
-            self.update_occupancy_grid(robot_id, [(angle, distance)])
+        if collision_flag:
+            self.update_occupancy_grid(robot_id, update_data)
     
     def update_occupancy_grid(self, robot_id, scan_data):
         """Update the occupancy grid with new scan data"""
@@ -148,17 +151,14 @@ class Canvas:
             return
             
         robot = self.robots[robot_id]
-        robot_x, robot_y = robot.x, robot.y
-        robot_theta = robot.theta
         
-        for angle, distance in scan_data:
+        for end_pos, distance in scan_data:
             if distance >= 19.9:  # Skip max-range readings (likely no obstacle)
                 continue
                 
             # Calculate world coordinates of the obstacle
-            scan_angle = robot_theta + angle
-            obstacle_x = robot_x + distance * -math.sin(scan_angle)
-            obstacle_y = robot_y + distance * math.cos(scan_angle)
+            obstacle_x = end_pos[0]
+            obstacle_y = end_pos[1]
             
             # Convert to grid coordinates
             grid_x = int(obstacle_x / self.grid_size)
@@ -284,17 +284,15 @@ class Canvas:
             if robot_id not in self.robots:
                 continue
                 
-            print(scan_data)
             robot = self.robots[robot_id]
             robot_x, robot_y = robot.x, robot.y
             robot_theta = robot.theta
             
-            for angle, distance in scan_data:
-                scan_angle = robot_theta + angle
+            for end_pos, distance in scan_data:
                 
                 # Calculate world coordinates of the scan endpoint
-                end_x = robot_x + distance * -math.sin(scan_angle)
-                end_y = robot_y + distance * math.cos(scan_angle)
+                end_x = end_pos[0]
+                end_y = end_pos[1]
                 
                 # Draw line from robot to scan endpoint
                 start_screen = self.world_to_screen((robot_x, robot_y))

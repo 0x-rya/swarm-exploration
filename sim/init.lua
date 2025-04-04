@@ -1,26 +1,57 @@
 Sock = require("socket")
 
-local cast_ray = function(ent, range) -- end_pos = start_pos + dir (x, y, z) * range    entity should calculate this and send it here
+local cast_rays = function(ent, range, angle) -- end_pos = start_pos + dir (x, y, z) * range
+    -- ent: entity object
+    -- range: distance of the rays
+    -- angle: view cone in radians
 
-	--[[ (x, y, z)
-		x - sin
-		z - cos
-			360 -> (0, 0, 1)
-			180 -> (0, 0, -1)
-			90  -> (-1, 0, 0)
-			270 -> (1, 0, 0)
-	]]
+    -- temp
+    local collFlag = false
+    -- remove later
 
-	local entPos = ent:get_pos()
-	local entDir = ent:get_yaw()
+    local entPos = ent:get_pos()
+    local entDir = ent:get_yaw()
+    local half_angle = angle / 2
+    local step = math.rad(5) -- Step size for raycasting (5 degrees in radians)
+    local results = {}
 
-	local x, z = -1 * math.sin(entDir), math.cos(entDir)
-	local dir = vector.new(x, 0, z)
+    for offset = -half_angle, half_angle, step do
+        local current_angle = entDir + offset
 
-    local end_pos = vector.add(entPos, vector.multiply(dir, range))
-    local ray = minetest.raycast(vector.add(entPos, dir), end_pos, true, false)
-    return ray:next(), dir
+        local x, z = -1 * math.sin(current_angle), math.cos(current_angle)
+        local dir = vector.new(x, 0, z)
 
+        local end_pos = vector.add(entPos, vector.multiply(dir, range))
+        local ray = minetest.raycast(vector.add(entPos, dir), end_pos, true, false)
+        local coll = ray:next()
+
+        -- temp
+        if coll ~= nil then
+            collFlag = true
+            coll_new = { intersection_point = coll.intersection_point, coll_flag = 1 }
+        else
+            coll_new = { intersection_point = end_pos, coll_flag = 0 }
+        end
+        -- remove later
+
+        table.insert(results, coll_new)
+    end
+
+    return results, collFlag
+end
+
+local format_data = function(entPos, entDir, data)
+    -- Format the data in a / separated string to send over network
+    local formatted_data = string.format("%d,%d,%d,%d/", entPos.x, entPos.y, entPos.z, entDir)
+    -- Add the collision data
+    for i, v in ipairs(data) do
+        if v.coll_flag == 1 then
+            print("Collision: " .. dump(v))
+        end
+        formatted_data = formatted_data .. string.format("%.1f,%.1f,%.1f,%d/", v.intersection_point.x, v.intersection_point.y, v.intersection_point.z, v.coll_flag)
+    end
+
+    return formatted_data
 end
 
 print("Mod Loaded")
@@ -61,46 +92,22 @@ minetest.register_entity("lidar_sim:castor", {
         local ent = self.object
 		local entPos = ent:get_pos()
 		local entDir = ent:get_yaw()
-        local coll, dir = cast_ray(ent, range)
-		if coll ~= nil then
-        	local dist = vector.subtract(entPos, coll.intersection_point)
-
-			-- data sending protocol
-
-			self._client:send(
-				string.format(
-					"%d,%d,%d,%d/%.1f,%.1f,%.1f/%d",	-- d, d, d ent pos and f, f, f dist and d obj
-					entPos.x,
-					entPos.y,
-					entPos.z,
-					entDir,
-					coll.intersection_point.x,
-					coll.intersection_point.y,
-					coll.intersection_point.z,
-					1
-				)
-			)
-
-        	print(dist)
-
+        local res, collFlag = cast_rays(ent, range, math.rad(60)) -- 60 degrees view cone
+		-- this entire condition will be removed later
+        local dir = vector.new(-1 * math.sin(entDir), 0, math.cos(entDir))
+        if collFlag then
             self.object:set_yaw(entDir + 1.71)
         else
-			local end_pos = vector.add(entPos, vector.multiply(dir, range))
             self.object:move_to(vector.add(speed * dir * dtime, entPos))
-			
-			self._client:send(
-				string.format(
-					"%d,%d,%d,%d/%.1f,%.1f,%.1f/%d",	-- d, d, d ent pos and f, f, f dist and d no obj
-					entPos.x,
-					entPos.y,
-					entPos.z,
-					entDir,
-					end_pos.x,
-					end_pos.y,
-					end_pos.z,
-					0
-				)
-			)
-		end
+        end
+        -- send data to the server
+        local formatted_data = format_data(entPos, entDir, res)
+        local err = self._client:send(formatted_data)
+        if err ~= nil then
+            print("Data sent: " .. formatted_data)
+        else
+            print("Data send failed")
+        end
+        -- receive data from the server
     end
 })
