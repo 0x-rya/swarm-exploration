@@ -121,6 +121,7 @@ class Canvas:
         # Get ray endpoint and collision flag
         collision_flag = False
         update_data = []
+        self.robot_scan_data[robot_id] = []
         for datapoint in data[1:]:
             ray_data = datapoint.split(',')
             if len(ray_data) < 4:
@@ -139,7 +140,8 @@ class Canvas:
                 update_data.append((end_pos, distance))
             
             # Store scan data for visualization (single ray)
-            self.robot_scan_data[robot_id] = [(end_pos, distance)]
+            # TODO: instead, append the data to the array and clear the array every time stamp
+            self.robot_scan_data[robot_id].append((end_pos, distance))
         
         # Update occupancy grid if collision was detected
         if collision_flag:
@@ -334,7 +336,7 @@ class Canvas:
         # Apply zoom
         old_zoom = self.zoom
         self.zoom *= factor
-        self.zoom = max(0.1, min(10.0, self.zoom))  # Limit zoom range
+        self.zoom = max(0.1, self.zoom)  # Limit zoom range
         
         # Get new world coordinates of the screen center after zooming
         new_center_x, new_center_y = self.get_center_coords()

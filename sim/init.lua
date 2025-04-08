@@ -12,7 +12,7 @@ local cast_rays = function(ent, range, angle) -- end_pos = start_pos + dir (x, y
     local entPos = ent:get_pos()
     local entDir = ent:get_yaw()
     local half_angle = angle / 2
-    local step = math.rad(5) -- Step size for raycasting (5 degrees in radians)
+    local step = math.rad(3) -- Step size for raycasting (5 degrees in radians)
     local results = {}
 
     for offset = -half_angle, half_angle, step do
@@ -87,16 +87,16 @@ minetest.register_entity("lidar_sim:castor", {
     end,
 
     on_step = function (self, dtime, moveresult)
-        local range = 2
-		local speed = 2
+        local range = 1
+		local speed = 5
         local ent = self.object
 		local entPos = ent:get_pos()
 		local entDir = ent:get_yaw()
-        local res, collFlag = cast_rays(ent, range, math.rad(60)) -- 60 degrees view cone
+        local res, collFlag = cast_rays(ent, range, math.rad(120)) -- 60 degrees view cone
 		-- this entire condition will be removed later
         local dir = vector.new(-1 * math.sin(entDir), 0, math.cos(entDir))
         if collFlag then
-            self.object:set_yaw(entDir + 1.71)
+            self.object:set_yaw(entDir + (math.pi/2))
         else
             self.object:move_to(vector.add(speed * dir * dtime, entPos))
         end
