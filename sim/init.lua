@@ -96,7 +96,7 @@ minetest.register_entity("lidar_sim:castor", {
 		-- this entire condition will be removed later
         local dir = vector.new(-1 * math.sin(entDir), 0, math.cos(entDir))
         if collFlag then
-            self.object:set_yaw(entDir + (math.pi/2))
+            self.object:set_yaw(entDir + (2 * math.random() * math.pi))
         else
             self.object:move_to(vector.add(speed * dir * dtime, entPos))
         end
@@ -109,5 +109,19 @@ minetest.register_entity("lidar_sim:castor", {
             print("Data send failed")
         end
         -- receive data from the server
+        self._client:settimeout(0)
+        local ready_to_read, _, err = Sock.select({self._client}, nil, 0)
+        for _, sock in ipairs(ready_to_read) do
+            print(dump(sock))
+            if sock == self._client then
+                local data, err, partial = self._client:receive()
+                if data then
+                    print("Data received: " .. data)
+                elseif err ~= "timeout" then
+                    print("Receive error:", err or "unknown")
+                end
+            end
+        end
+
     end
 })

@@ -27,6 +27,7 @@ def new_conn(socket: socket.socket, address, idx: int):
         if len(data) == 0:
             continue
         
+        print("Data sent", socket.send("Data recvd with thanks".encode('utf-8')))
         # Store with timestamp and robot ID
         timestamp = time.time()
         data_str = data.decode('utf-8')
