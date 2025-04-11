@@ -112,11 +112,12 @@ minetest.register_entity("lidar_sim:castor", {
         self._client:settimeout(0)
         local ready_to_read, _, err = Sock.select({self._client}, nil, 0)
         for _, sock in ipairs(ready_to_read) do
-            print(dump(sock))
             if sock == self._client then
-                local data, err, partial = self._client:receive()
-                if data then
+                local data, err, partial = self._client:receive("*a")  -- Try to read all available data
+                if data and data ~= "" then
                     print("Data received: " .. data)
+                elseif partial and partial ~= "" then
+                    print("Partial data received: " .. partial)
                 elseif err ~= "timeout" then
                     print("Receive error:", err or "unknown")
                 end
