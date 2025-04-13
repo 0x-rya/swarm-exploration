@@ -1,11 +1,9 @@
-import json
-import socket
 import time
-from threading import Thread
-import os
-from dotenv import load_dotenv
-import logging
 import valkey
+import socket
+import logging
+import robo_em
+from threading import Thread
 
 # VARS
 VALKEY_IP = '127.0.0.1' # "10.1.107.112"
@@ -36,12 +34,11 @@ def new_conn(socket: socket.socket, address, idx: int):
         print(data_str)
         storage_data = f"{timestamp},{idx},{data_str}"
         
-        # Store in Valkey with key format: "robot:{id}:{timestamp}"
-        key_name = f"robot:{idx}:{timestamp}"
-        vk.set(key_name, storage_data)
-        
-        # Also store in a list for each robot to make retrieval easier
+        # Store in a list for each robot to make retrieval easier
         vk.rpush(f"robot:{idx}:history", storage_data)
+
+        for (x, y), value in robo_em.parse_data_str(data_str):
+            vk.set(f"robot:{idx}:km:{idx}:{x}:{y}", value)
         
         # Maintain a set of active robots
         vk.sadd("active_robots", str(idx))

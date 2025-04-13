@@ -18,6 +18,7 @@ class Robot:
         self.theta = theta
         self.size = size
         self.color = color
+        self.occupancy_knowledge = {}
         self.trail = []  # Store positions for drawing a trail
         self.max_trail_length = 100  # Maximum number of positions to store
         

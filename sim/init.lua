@@ -48,7 +48,10 @@ local format_data = function(entPos, entDir, data)
         if v.coll_flag == 1 then
             print("Collision: " .. dump(v))
         end
-        formatted_data = formatted_data .. string.format("%.1f,%.1f,%.1f,%d/", v.intersection_point.x, v.intersection_point.y, v.intersection_point.z, v.coll_flag)
+        if v.coll_flag == nil then
+            print("Recvd nil" .. dump(v))
+        end
+        formatted_data = formatted_data .. string.format("%d,%d,%d,%d/", v.intersection_point.x, v.intersection_point.y, v.intersection_point.z, v.coll_flag)
     end
 
     return formatted_data

@@ -25,7 +25,8 @@ class Canvas:
         # Colors
         self.WHITE = (255, 255, 255)
         self.BLACK = (0, 0, 0)
-        self.GRID_COLOR = (220, 220, 220)
+        self.GRID_BG = (20, 20, 20)
+        self.GRID_COLOR = (45, 45, 45)
         self.OBSTACLE_COLOR = (100, 100, 100)
         
         # Canvas settings
@@ -127,7 +128,7 @@ class Canvas:
             if len(ray_data) < 4:
                 break
             
-            end_x, end_y, end_z, collFlag = float(ray_data[0]), float(ray_data[1]), float(ray_data[2]), int(ray_data[3])
+            end_x, end_y, end_z, collFlag = int(ray_data[0]), int(ray_data[1]), int(ray_data[2]), int(ray_data[3])
             
             # Calculate distance between robot position and end position
             end_pos = (end_x, end_z)  # Use z as y in 2D visualization
@@ -231,12 +232,12 @@ class Canvas:
         origin_screen = self.world_to_screen((0, 0))
         
         # X-axis
-        pygame.draw.line(self.screen, self.BLACK, 
+        pygame.draw.line(self.screen, self.WHITE, 
                          (0, origin_screen[1]), 
                          (self.WIDTH, origin_screen[1]), 3)
         
         # Y-axis
-        pygame.draw.line(self.screen, self.BLACK, 
+        pygame.draw.line(self.screen, self.WHITE, 
                          (origin_screen[0], 0), 
                          (origin_screen[0], self.HEIGHT), 3)
                          
@@ -245,6 +246,9 @@ class Canvas:
         # Calculate the visible area in world coordinates
         top_left = self.screen_to_world((0, 0))
         bottom_right = self.screen_to_world((self.WIDTH, self.HEIGHT))
+        
+        # Clear the screen
+        self.screen.fill(self.BLACK)
         
         # Calculate grid cell dimensions in screen coordinates
         grid_cell_screen = self.world_to_screen((self.grid_size, 0))[0] - self.world_to_screen((0, 0))[0]
@@ -255,23 +259,40 @@ class Canvas:
         min_grid_y = int(top_left[1] / self.grid_size) - 1
         max_grid_y = int(bottom_right[1] / self.grid_size) + 1
         
-        for (grid_x, grid_y), confidence in self.occupancy_grid.items():
-            # Skip if outside visible area
-            if grid_x < min_grid_x or grid_x > max_grid_x or grid_y < min_grid_y or grid_y > max_grid_y:
-                continue
+        # for (grid_x, grid_y), confidence in self.occupancy_grid.items():
+        color_dict = {}
+        for idx, robo in self.robots.items():
+            keys = self.vk.keys(f"robot:{idx}:km:{idx}:*")
+            for key in keys:
+                x, y = key.decode("utf-8").split(":")[-2:]
+                grid_x, grid_y = int(int(x)/self.grid_size), int(int(y)/self.grid_size)
+                value = self.vk.get(key).decode("utf-8")
+                value = int(value)
                 
-            # Convert grid coordinates to world coordinates
-            world_x = grid_x * self.grid_size
-            world_y = grid_y * self.grid_size
-            
-            # Convert to screen coordinates
-            screen_x, screen_y = self.world_to_screen((world_x, world_y))
-            
-            # Calculate color based on confidence (darker = higher confidence)
-            intensity = int(255 * (1 - confidence / 100))
-            color = (intensity, intensity, intensity)
-            
-            # Draw cell
+                if value != 1:
+                    continue
+
+                # Skip if outside visible area
+                if grid_x < min_grid_x or grid_x > max_grid_x or grid_y < min_grid_y or grid_y > max_grid_y:
+                    continue
+                
+                # Convert grid coordinates to world coordinates
+                world_x = grid_x * self.grid_size
+                world_y = grid_y * self.grid_size
+                
+                # Convert to screen coordinates
+                screen_x, screen_y = self.world_to_screen((world_x, world_y))
+                if (screen_x, screen_y) not in color_dict.keys():
+                    color_dict[(screen_x, screen_y)] = robo.color
+                else:
+                    r, g, b = color_dict[(screen_x, screen_y)]
+                    r = min(255, r + robo.color[0])
+                    g = min(255, g + robo.color[1])
+                    b = min(255, b + robo.color[2])
+                    color_dict[(screen_x, screen_y)] = (r, g, b)
+                
+        # Draw cell
+        for (screen_x, screen_y), color in color_dict.items():
             rect = pygame.Rect(
                 screen_x, 
                 screen_y, 
@@ -313,19 +334,19 @@ class Canvas:
         
         # Display center coordinates
         center_x, center_y = self.get_center_coords()
-        coords_text = font.render(f"Center: ({center_x:.2f}, {center_y:.2f})", True, self.BLACK)
+        coords_text = font.render(f"Center: ({center_x:.2f}, {center_y:.2f})", True, self.WHITE)
         self.screen.blit(coords_text, (10, 10))
         
         # Display zoom level
-        zoom_text = font.render(f"Zoom: {self.zoom:.2f}x", True, self.BLACK)
+        zoom_text = font.render(f"Zoom: {self.zoom:.2f}x", True, self.WHITE)
         self.screen.blit(zoom_text, (10, 40))
         
         # Display number of connected robots
-        robot_text = font.render(f"Connected Robots: {robot_count}", True, self.BLACK)
+        robot_text = font.render(f"Connected Robots: {robot_count}", True, self.WHITE)
         self.screen.blit(robot_text, (10, 70))
         
         # Navigation instructions
-        nav_text = font.render("Pan: WASD | Zoom: +/- or Mouse Wheel", True, self.BLACK)
+        nav_text = font.render("Pan: WASD | Zoom: +/- or Mouse Wheel", True, self.WHITE)
         self.screen.blit(nav_text, (10, self.HEIGHT - 30))
         
     def zoom_at_center(self, factor):
@@ -426,8 +447,8 @@ class Canvas:
         
         # Draw a small crosshair at the center of the screen
         center_screen = (self.WIDTH // 2, self.HEIGHT // 2)
-        pygame.draw.line(self.screen, self.BLACK, (center_screen[0] - 10, center_screen[1]), (center_screen[0] + 10, center_screen[1]), 1)
-        pygame.draw.line(self.screen, self.BLACK, (center_screen[0], center_screen[1] - 10), (center_screen[0], center_screen[1] + 10), 1)
+        pygame.draw.line(self.screen, self.WHITE, (center_screen[0] - 10, center_screen[1]), (center_screen[0] + 10, center_screen[1]), 1)
+        pygame.draw.line(self.screen, self.WHITE, (center_screen[0], center_screen[1] - 10), (center_screen[0], center_screen[1] + 10), 1)
         
         # Draw HUD
         self.draw_hud(len(self.robots))
