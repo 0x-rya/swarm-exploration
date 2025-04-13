@@ -38,7 +38,8 @@ def new_conn(socket: socket.socket, address, idx: int):
         vk.rpush(f"robot:{idx}:history", storage_data)
 
         for (x, y), value in robo_em.parse_data_str(data_str):
-            vk.set(f"robot:{idx}:km:{idx}:{x}:{y}", value)
+            if value == 1:                                      ## update only if value is 1, because 0 might conflict with other robots' data
+                vk.set(f"robot:{idx}:km:{idx}:{x}:{y}", value)
         
         # Maintain a set of active robots
         vk.sadd("active_robots", str(idx))
