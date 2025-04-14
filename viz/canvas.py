@@ -86,11 +86,11 @@ class Canvas:
         
         # Extract metadata (timestamp, robot_id, position, orientation)
         metadata = data[0].split(',')
-        if len(metadata) < 6:
+        if len(metadata) < 7:
             return
         
-        timestamp, robot_id = metadata[0], metadata[1]
-        pos_x, pos_y, pos_z, orientation = metadata[2], metadata[3], metadata[4], metadata[5]
+        timestamp, robot_id, commRange = metadata[0], metadata[1], metadata[2]
+        pos_x, pos_y, pos_z, orientation = metadata[3], metadata[4], metadata[5], metadata[6]
         
         # Create or update robot
         robot_id = int(robot_id)
