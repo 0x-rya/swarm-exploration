@@ -34,6 +34,9 @@ def new_conn(socket: socket.socket, address, idx: int, commRange: int):
         # Maintain a set of active robots
         vk.sadd("active_robots", str(idx))
         # vk.expire(f"robot:{idx}:active", 5)  # Robot considered inactive after 5 seconds
+
+        if data_str == "Connection Established":
+            continue
         
         # Format: timestamp,robot_id,data
         storage_data = f"{timestamp},{idx},{commRange},{data_str}"
@@ -54,10 +57,13 @@ def new_conn(socket: socket.socket, address, idx: int, commRange: int):
             other_idx = int(other_idx.decode("utf-8"))
 
             if other_idx == idx:
-                print(f"Same Index: {idx}")
                 continue
-            print(f"Diff Index: {idx}, {other_idx}")
-            (other_x, other_y), _, err = robo_em.parse_data_str(vk.lrange(f"robot:{other_idx}:history", -1, -1)[0].decode("utf-8"))
+            histData = vk.lrange(f"robot:{other_idx}:history", -1, -1)
+            if len(histData) == 0:
+                continue
+            else:
+                histData = histData[0].decode("utf-8")
+            (other_x, other_y), _, err = robo_em.parse_data_str(histData)
             if err:
                 continue
 
@@ -76,7 +82,6 @@ def new_conn(socket: socket.socket, address, idx: int, commRange: int):
                         f"robot:{idx}:km:{other_idx}:{x}:{y}",
                         value
                     )
-                    print(resp)
         
         logging.info(f"Stored data: {storage_data}")
     

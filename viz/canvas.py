@@ -8,7 +8,7 @@ import json
 from robot import Robot
 
 class Canvas:
-    def __init__(self, width=800, height=600):
+    def __init__(self, width=800, height=600, robo_id: int | None = None):
         """Initialize the canvas for visualizing robots"""
         # Screen dimensions
         self.WIDTH = width
@@ -48,7 +48,9 @@ class Canvas:
         self.vk = valkey.Valkey(host='127.0.0.1', port=6379)
         
         # Robot data storage
+        self.robo_id = robo_id
         self.robots = {}  # {robot_id: Robot()}
+        self.robots_lock = threading.Lock()
         self.robot_scan_data = {}  # {robot_id: [(end_pos, distance), ...]}
         
         # Map data (occupancy grid)
@@ -63,8 +65,11 @@ class Canvas:
     def fetch_robot_data(self):
         """Thread function to fetch robot data from Valkey"""
         while self.running:
-            # Get list of active robots
-            active_robots = self.vk.smembers("active_robots")
+            if robo_id:
+                active_robots = [f'{self.robo_id}'.encode()]
+            else:
+                # Get list of active robots
+                active_robots = self.vk.smembers("active_robots")
             
             for robot_id in active_robots:
                 # Get the latest data for this robot
@@ -97,13 +102,14 @@ class Canvas:
         if robot_id not in self.robots:
             # Create new robot with a color based on its ID
             color = ((robot_id * 83) % 256, (robot_id * 157) % 256, (robot_id * 223) % 256)
-            self.robots[robot_id] = Robot(
-                x=float(pos_x), 
-                y=float(pos_z),  # Use z as y in 2D visualization
-                theta=float(orientation),
-                size=1,
-                color=color
-            )
+            with self.robots_lock:
+                self.robots[robot_id] = Robot(
+                    x=float(pos_x), 
+                    y=float(pos_z),  # Use z as y in 2D visualization
+                    theta=float(orientation),
+                    size=1,
+                    color=color
+                )
         else:
             # Update existing robot
             self.robots[robot_id].set_pose(
@@ -261,8 +267,70 @@ class Canvas:
         
         # for (grid_x, grid_y), confidence in self.occupancy_grid.items():
         color_dict = {}
-        for idx, robo in self.robots.items():
-            keys = self.vk.keys(f"robot:{idx}:km:{idx}:*")
+        with self.robots_lock:
+            for idx, robo in self.robots.items():
+                keys = self.vk.keys(f"robot:{idx}:km:{idx}:*")
+                for key in keys:
+                    x, y = key.decode("utf-8").split(":")[-2:]
+                    grid_x, grid_y = int(int(x)/self.grid_size), int(int(y)/self.grid_size)
+                    value = self.vk.get(key).decode("utf-8")
+                    value = int(value)
+                    
+                    if value != 1:
+                        continue
+
+                    # Skip if outside visible area
+                    if grid_x < min_grid_x or grid_x > max_grid_x or grid_y < min_grid_y or grid_y > max_grid_y:
+                        continue
+                    
+                    # Convert grid coordinates to world coordinates
+                    world_x = grid_x * self.grid_size
+                    world_y = grid_y * self.grid_size
+                    
+                    # Convert to screen coordinates
+                    screen_x, screen_y = self.world_to_screen((world_x, world_y))
+                    if (screen_x, screen_y) not in color_dict.keys():
+                        color_dict[(screen_x, screen_y)] = robo.color
+                    else:
+                        r, g, b = color_dict[(screen_x, screen_y)]
+                        r = min(255, r + robo.color[0])
+                        g = min(255, g + robo.color[1])
+                        b = min(255, b + robo.color[2])
+                        color_dict[(screen_x, screen_y)] = (r, g, b)
+                
+        # Draw cell
+        for (screen_x, screen_y), color in color_dict.items():
+            rect = pygame.Rect(
+                screen_x, 
+                screen_y, 
+                max(1, grid_cell_screen), 
+                max(1, grid_cell_screen)
+            )
+            pygame.draw.rect(self.screen, color, rect)
+
+    def draw_solo_occupancy_grid(self):
+        """Draw the occupancy grid on the canvas"""
+        # Calculate the visible area in world coordinates
+        top_left = self.screen_to_world((0, 0))
+        bottom_right = self.screen_to_world((self.WIDTH, self.HEIGHT))
+        
+        # Clear the screen
+        self.screen.fill(self.BLACK)
+        
+        # Calculate grid cell dimensions in screen coordinates
+        grid_cell_screen = self.world_to_screen((self.grid_size, 0))[0] - self.world_to_screen((0, 0))[0]
+        
+        # Only draw cells within the visible area
+        min_grid_x = int(top_left[0] / self.grid_size) - 1
+        max_grid_x = int(bottom_right[0] / self.grid_size) + 1
+        min_grid_y = int(top_left[1] / self.grid_size) - 1
+        max_grid_y = int(bottom_right[1] / self.grid_size) + 1
+        
+        # for (grid_x, grid_y), confidence in self.occupancy_grid.items():
+        color_dict = {}
+        for idx in self.vk.smembers("active_robots"):
+            other_idx = int(idx.decode('utf-8'))
+            keys = self.vk.keys(f"robot:{self.robo_id}:km:{other_idx}:*")
             for key in keys:
                 x, y = key.decode("utf-8").split(":")[-2:]
                 grid_x, grid_y = int(int(x)/self.grid_size), int(int(y)/self.grid_size)
@@ -283,12 +351,12 @@ class Canvas:
                 # Convert to screen coordinates
                 screen_x, screen_y = self.world_to_screen((world_x, world_y))
                 if (screen_x, screen_y) not in color_dict.keys():
-                    color_dict[(screen_x, screen_y)] = robo.color
+                    color_dict[(screen_x, screen_y)] = ((other_idx * 83) % 256, (other_idx * 157) % 256, (other_idx * 223) % 256)
                 else:
                     r, g, b = color_dict[(screen_x, screen_y)]
-                    r = min(255, r + robo.color[0])
-                    g = min(255, g + robo.color[1])
-                    b = min(255, b + robo.color[2])
+                    r = min(255, r + (other_idx * 83) % 256)
+                    g = min(255, g + (other_idx * 157) % 256)
+                    b = min(255, b + (other_idx * 223) % 256)
                     color_dict[(screen_x, screen_y)] = (r, g, b)
                 
         # Draw cell
@@ -432,7 +500,10 @@ class Canvas:
         self.screen.fill(self.WHITE)
         
         # Draw occupancy grid
-        self.draw_occupancy_grid()
+        if not self.robo_id:
+            self.draw_occupancy_grid()
+        else:
+            self.draw_solo_occupancy_grid()
         
         # Draw grid
         self.draw_grid()
@@ -441,9 +512,10 @@ class Canvas:
         self.draw_scan_data()
         
         # Update and draw all robots
-        for robot in self.robots.values():
-            robot.update(dt)
-            robot.draw(self.screen, self.world_to_screen)
+        with self.robots_lock:
+            for robot in self.robots.values():
+                robot.update(dt)
+                robot.draw(self.screen, self.world_to_screen)
         
         # Draw a small crosshair at the center of the screen
         center_screen = (self.WIDTH // 2, self.HEIGHT // 2)
@@ -459,7 +531,18 @@ class Canvas:
 
 # For standalone execution
 if __name__ == "__main__":
-    canvas = Canvas(width=1024, height=768)
+
+    args = sys.argv[1:]
+    if len(args) > 1:
+        print(f"Invalid Usage. Valid Usage: python3 {sys.argv[0]} [robot_id]. [] implies it is optional, not a list.")
+        exit()
+
+    if len(args) == 1:
+        robo_id = int(args[0])
+    else:
+        robo_id = None
+
+    canvas = Canvas(width=1024, height=768, robo_id=robo_id)
     
     # Main loop
     try:
